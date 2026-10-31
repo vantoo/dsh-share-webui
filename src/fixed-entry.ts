@@ -14,7 +14,7 @@
 import { createServer, request as httpRequest } from 'node:http'
 import type { IncomingHttpHeaders, IncomingMessage, Server, ServerResponse } from 'node:http'
 import { authorized, handleControl, serveDoor } from './gate.ts'
-import type { ControlContext } from './gate.ts'
+import type { CloudflarePolicy, ControlContext } from './gate.ts'
 import type { DeviceStore } from './pairing.ts'
 
 /** Live harness server plus the credentials source behind the gateway. */
@@ -35,6 +35,8 @@ export interface GatewayTarget {
   readonly trustLoopback: boolean
   /** Paired devices and the live pairing code. */
   readonly devices: DeviceStore
+  /** Cloudflare Access policy, when configured. */
+  readonly cloudflare?: CloudflarePolicy
   /** Mint one fresh tokenized handshake URL. */
   readonly mintUrl: () => string
 }
@@ -191,6 +193,7 @@ export class FixedPortGateway {
       trustLoopback: this.target.trustLoopback,
       devices: this.target.devices,
       allowedHosts: this.target.allowedHosts,
+      cloudflare: this.target.cloudflare,
     }
   }
 
@@ -254,7 +257,7 @@ export class FixedPortGateway {
       await handleControl(request, response, path, this.control())
       return
     }
-    if (!authorized(request, this.control())) {
+    if (!(await authorized(request, this.control()))) {
       serveDoor(request, response)
       return
     }
@@ -321,7 +324,7 @@ export class FixedPortGateway {
       socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n')
       return
     }
-    if (!authorized(request, this.control())) {
+    if (!(await authorized(request, this.control()))) {
       socket.end('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\nContent-Length: 0\r\n\r\n')
       return
     }

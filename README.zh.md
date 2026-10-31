@@ -73,6 +73,23 @@ dsh plugin --profile desktop add link:/绝对路径/dsh-share-webui
 
 设备记录写在 `$DSH_HOME/share-webui-devices.json`（权限 600，只存 secret 的 SHA-256）。
 
+## Cloudflare Access（隧道）
+
+用 `cloudflared` 把固定入口发布到公网时，所有请求的对端地址都会变成 `127.0.0.1`，配对会被绕过。开启这一项后，网关改为校验 Cloudflare 为每个请求签发的 `Cf-Access-Jwt-Assertion`：
+
+- 只要请求带着 Cloudflare 边缘头（`cf-ray` / `cf-connecting-ip` / 断言本身），就**必须**有有效断言，否则拒绝——即使 `trustLoopback: true` 或 `access: open`
+- 本机直连与局域网请求没有这些头，仍走原来的配对逻辑，两条路径互不影响
+- 验签是严格的：只接受 RS256，校验 `iss` / `aud` / `exp` / `nbf`；密钥从 `<team>/cdn-cgi/access/certs` 获取并缓存 10 分钟，取不到密钥时**失败关闭**
+
+### 配置步骤
+
+1. 在 Cloudflare Zero Trust 建一个 Access 应用，指向隧道域名
+2. 记下 **Application Audience (AUD) Tag** 与 team domain（形如 `myteam.cloudflareaccess.com`）
+3. 设置 → Web 共享 → Cloudflare Access：填这两项、勾「启用」、点「应用」
+4. 面板会显示最近一次隧道请求的结果：验证通过的 email，或拒绝原因
+
+> 插件直接连 `https://<team>/cdn-cgi/access/certs`，不走系统代理。若宿主机必须经代理出网，验签会失败（失败关闭，不会误放行）。
+
 ## 配置
 
 日常用设置页即可。需要固定端口/初始值时，在 profile 的 `cordis.patch.yml` 里：

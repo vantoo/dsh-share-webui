@@ -92,6 +92,35 @@ time) with a per-device "Revoke" button — revocation is immediate, no restart.
 Devices are stored in `$DSH_HOME/share-webui-devices.json` (mode 600, only the
 SHA-256 of each secret).
 
+## Cloudflare Access (tunnel)
+
+When `cloudflared` publishes the fixed entry, every request arrives from
+`127.0.0.1`, which would bypass pairing. Enabling this makes the gateway verify
+the `Cf-Access-Jwt-Assertion` Cloudflare attaches to each request:
+
+- Any request carrying Cloudflare's edge headers (`cf-ray`, `cf-connecting-ip`
+  or the assertion itself) **must** present a valid assertion — even with
+  `trustLoopback: true` or `access: open`
+- Loopback and LAN requests carry none of those headers and keep using pairing;
+  the two paths do not interfere
+- Verification is strict: RS256 only, `iss` / `aud` / `exp` / `nbf` checked;
+  keys are fetched from `<team>/cdn-cgi/access/certs` and cached for 10 minutes,
+  and a failed fetch **fails closed**
+
+### Setup
+
+1. Create a Zero Trust Access application pointing at the tunnel hostname
+2. Note the **Application Audience (AUD) Tag** and the team domain
+   (`myteam.cloudflareaccess.com`)
+3. Settings → Web sharing → Cloudflare Access: fill both, tick "Enabled", press
+   "Apply"
+4. The panel reports the last tunnel request: the verified email, or why it was
+   rejected
+
+> The plugin talks to `https://<team>/cdn-cgi/access/certs` directly and ignores
+> the system proxy. If the host can only reach the internet through a proxy,
+> verification fails (closed, never permissive).
+
 ## Configuration
 
 Optional — the settings page covers normal use. In the profile's

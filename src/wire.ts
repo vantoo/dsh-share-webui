@@ -28,6 +28,24 @@ export interface ShareWebuiResult {
   readonly devices?: readonly ShareWebuiDevice[]
   /** Fixed port in use, as a decimal string (0 = disabled). */
   readonly port?: string
+  /** Cloudflare Access settings and last verification (host only). */
+  readonly cloudflare?: ShareWebuiCloudflare
+}
+
+/** Cloudflare Access block shown in the settings page. */
+export interface ShareWebuiCloudflare {
+  /** `on` or `off`. */
+  readonly enabled: string
+  /** Team domain. */
+  readonly teamDomain: string
+  /** Access application AUD tag. */
+  readonly audience: string
+  /** Email of the last verified assertion, or empty. */
+  readonly lastEmail: string
+  /** Reason the last assertion was rejected, or empty. */
+  readonly lastReason: string
+  /** ISO time of the last verification, or empty. */
+  readonly lastAt: string
 }
 
 /** One paired browser as the settings page sees it. */
@@ -52,6 +70,14 @@ export const RESULT_SCHEMA = z.object({
   selection: z.array(z.string()).optional(),
   local: z.string().optional(),
   port: z.string().optional(),
+  cloudflare: z.object({
+    enabled: z.string(),
+    teamDomain: z.string(),
+    audience: z.string(),
+    lastEmail: z.string(),
+    lastReason: z.string(),
+    lastAt: z.string(),
+  }).optional(),
   devices: z.array(z.object({
     id: z.string(),
     label: z.string(),
@@ -209,6 +235,23 @@ export const cancelPairingInvocation = Object.freeze({
   sourceLocation: Object.freeze({ file: 'src/wire.ts', line: 1, column: 1 }),
 } as const) satisfies InvocationDescriptor
 
+/** `shareWebui/applyCloudflare`: update Access settings (host machine only). */
+export const applyCloudflareInvocation = Object.freeze({
+  id: 'dsh-share-webui#shareWebui/applyCloudflare',
+  service: 'shareWebui',
+  namespace: 'shareWebui',
+  method: 'applyCloudflare',
+  invocation: Object.freeze({ kind: 'direct' }),
+  parameters: Object.freeze([
+    Object.freeze({ name: 'origin', wire: 'origin', source: 'json', codec: strict('dsh-share-webui/types#origin', ORIGIN_SCHEMA) }),
+    Object.freeze({ name: 'teamDomain', wire: 'teamDomain', source: 'json', codec: strict('dsh-share-webui/types#teamDomain', z.string()) }),
+    Object.freeze({ name: 'audience', wire: 'audience', source: 'json', codec: strict('dsh-share-webui/types#audience', z.string()) }),
+    Object.freeze({ name: 'enabled', wire: 'enabled', source: 'json', codec: strict('dsh-share-webui/types#enabled', z.string()) }),
+  ]),
+  result: strict('dsh-share-webui/types#ShareWebuiResult', RESULT_SCHEMA),
+  sourceLocation: Object.freeze({ file: 'src/wire.ts', line: 1, column: 1 }),
+} as const) satisfies InvocationDescriptor
+
 /** All invocations, in manifest order. */
 export const INVOCATIONS = Object.freeze([
   readInvocation,
@@ -218,4 +261,5 @@ export const INVOCATIONS = Object.freeze([
   checkPortInvocation,
   applyPortInvocation,
   cancelPairingInvocation,
+  applyCloudflareInvocation,
 ])

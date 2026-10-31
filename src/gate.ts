@@ -11,8 +11,21 @@
 
 import { readFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import type { AccessResult, CloudflareConfig } from './cloudflare.ts'
 import { DEVICE_COOKIE } from './pairing.ts'
 import type { DeviceStore } from './pairing.ts'
+
+/** Cloudflare Access policy as the control plane sees it. */
+export interface CloudflarePolicy {
+  /** Whether tunnel traffic must present a valid assertion. */
+  enabled: () => boolean
+  /** Team domain and audience currently configured. */
+  config: () => CloudflareConfig
+  /** Verify one assertion (fetches team keys as needed). */
+  verify: (token: string) => Promise<AccessResult>
+  /** Record the outcome for the settings page. */
+  report: (result: AccessResult, address: string) => void
+}
 
 /** Everything the control plane needs from the gateway. */
 export interface ControlContext {
@@ -24,6 +37,8 @@ export interface ControlContext {
   readonly devices: DeviceStore
   /** Hostnames this gateway answers to. */
   readonly allowedHosts: readonly string[]
+  /** Cloudflare Access policy, when the plugin has one. */
+  readonly cloudflare?: CloudflarePolicy
 }
 
 /** Device cookie lifetime handed to a paired browser (one year). */
@@ -93,12 +108,40 @@ function labelOf(request: IncomingMessage): string {
 }
 
 /**
- * Whether this peer may reach the harness: loopback by default, otherwise a
- * paired-device cookie (or an explicitly open policy).
+ * Whether a request arrived through a Cloudflare tunnel. Cloudflare adds these
+ * headers at the edge, so a local client cannot shed them — and spoofing them
+ * only makes its own path stricter.
+ * @param request - inbound request.
+ */
+export function fromCloudflare(request: IncomingMessage): boolean {
+  return request.headers['cf-ray'] !== undefined
+    || request.headers['cf-connecting-ip'] !== undefined
+    || request.headers['cf-access-jwt-assertion'] !== undefined
+}
+
+/**
+ * Whether this peer may reach the harness.
+ *
+ * Tunnel traffic is decided first: when Cloudflare Access is enabled, a request
+ * that came through the edge must carry a valid assertion, whatever the peer
+ * address looks like. Everything else keeps the old rules (open policy,
+ * loopback trust, paired-device cookie).
  * @param request - inbound request.
  * @param context - gateway facts.
  */
-export function authorized(request: IncomingMessage, context: ControlContext): boolean {
+export async function authorized(request: IncomingMessage, context: ControlContext): Promise<boolean> {
+  const policy = context.cloudflare
+  if (policy !== undefined && policy.enabled() && fromCloudflare(request)) {
+    const token = request.headers['cf-access-jwt-assertion']
+    const peer = peerOf(request)
+    if (typeof token !== 'string' || token === '') {
+      policy.report({ identity: null, reason: 'no Cloudflare Access assertion' }, peer)
+      return false
+    }
+    const result = await policy.verify(token)
+    policy.report(result, peer)
+    return result.identity !== null
+  }
   if (context.access === 'open') return true
   const peer = peerOf(request)
   if (context.trustLoopback && isLoopbackAddress(peer)) return true
