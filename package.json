@@ -1,0 +1,88 @@
+{
+  "name": "dsh-share-webui",
+  "description": "Share this harness instance's Web GUI over a stable address: one listener per selected host (loopback / LAN / Tailscale / fully open), live host switching and copyable links in Settings → Web sharing · 把当前实例的 Web 界面共享出去：按选中主机分别监听，设置页「Web 共享」可即时切换与复制",
+  "version": "0.3.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./typert": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src",
+    "assets",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
+    }
+  },
+  "engines": {
+    "dsh": ">=0.2.1-rc.2"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "web-ui",
+    "settings",
+    "url",
+    "remote-access",
+    "access-control",
+    "device-pairing",
+    "tailscale",
+    "fixed-port"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "author": {
+    "name": "vantoo",
+    "url": "https://github.com/vantoo"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vantoo/dsh-share-webui.git"
+  },
+  "homepage": "https://github.com/vantoo/dsh-share-webui#readme",
+  "bugs": {
+    "url": "https://github.com/vantoo/dsh-share-webui/issues"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-typert-protocol": "^0.1.0",
+    "@deepseek-ai/dsh-api-remotes": "^0.1.0",
+    "@deepseek-ai/dsh-client-locale": "^0.1.0",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.1.0"
+  }
+}

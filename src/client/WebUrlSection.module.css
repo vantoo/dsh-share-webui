@@ -1,0 +1,288 @@
+/* Sharing settings section chrome. Tokens only — the sheet follows both
+ * color schemes through the shared --dsw-alias-* surface (token reference:
+ * packages/client/ui-theme). Row geometry mirrors the system PreferenceRow:
+ * 16px vertical padding, a .5px border-l2 separator, and 14/22 + 12/18 text. */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  max-width: 760px;
+}
+
+.heading {
+  margin: 0 0 8px;
+  color: var(--dsw-alias-label-primary);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+}
+
+.rowText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding-right: 48px;
+}
+
+.title {
+  color: var(--dsw-alias-label-primary);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+}
+
+.desc {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+/* Host picker cubes: same geometry as the system AppearanceRow cubes. */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 0;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+}
+
+.cubeRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.cube {
+  box-sizing: border-box;
+  display: flex;
+  flex: 150px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 16px 20px;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: var(--dsw-radius-xl);
+  background: none;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+.cube:hover:not(.selected):not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.cube:disabled {
+  cursor: default;
+}
+
+.selected {
+  background: var(--dsw-alias-bg-module-platform);
+  border-color: var(--dsw-static-neutral-bluish-400);
+}
+
+.cubeAddr {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--dsw-alias-label-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cubeName {
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.selectWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Trigger geometry copied from the system PreferenceRow selector. */
+.selector {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 220px;
+  height: 36px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--dsw-radius-md, 8px);
+  background: var(--dsw-alias-bg-module-platform, var(--dsw-alias-bg-layer-1));
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+.selector:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 2px;
+}
+
+.chevron {
+  display: block;
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 100%;
+  padding: 6px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-2);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.option:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.optionSelected {
+  background: var(--dsw-alias-interactive-bg-selected, transparent);
+}
+
+.checkMark {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.valueGroup {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.valueBox {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-md, 8px);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 18px;
+  word-break: break-all;
+  user-select: text;
+}
+
+.valueEmpty {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* Secondary button matching the system action chrome. */
+.action {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--dsw-radius-md, 8px);
+  background: var(--dsw-alias-bg-module-platform, var(--dsw-alias-bg-layer-1));
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.action:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.action:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 2px;
+}
+
+.danger {
+  margin: 0;
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.errorBox {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 0.5px solid var(--dsw-alias-state-error-secondary);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1);
+}

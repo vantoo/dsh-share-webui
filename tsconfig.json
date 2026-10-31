@@ -1,0 +1,37 @@
+{
+  // ⚠️ 本文件与 tsdown.config.ts 只在 deepseek-harness 单仓内有效:
+  // 它们假设自己位于 <harness>/packages/client/dsh-share-webui/,
+  // 因此 extends/references 都用 ../../../ 指向仓库根与兄弟包。
+  // 单独 clone 本仓库无法直接构建 —— 重建步骤见 README「从源码重建」。
+  "extends": "../../../tsconfig.base.client.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../typert/protocol"
+    },
+    {
+      "path": "../../api/remotes/tsconfig.client.json"
+    },
+    {
+      "path": "../locale"
+    },
+    {
+      "path": "../ui-slots"
+    },
+    {
+      "path": "../ui-settings"
+    }
+  ]
+}

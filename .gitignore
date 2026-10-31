@@ -1,0 +1,28 @@
+# 依赖
+node_modules/
+.pnpm-store/
+
+# 构建残留（lib/ 本身是必须入库的预构建产物）
+*.tsbuildinfo
+lib/**/*.map
+*.tgz
+
+# 日志与临时文件
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.smoke-*.mjs
+*.tmp
+
+# 编辑器与系统文件
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# 本地备份与旧仓库快照（配置备份、设备库、旧 .git 等，绝不入库）
+backups/
+
+# 本地环境变量
+.env
+.env.*
