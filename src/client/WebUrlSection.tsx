@@ -619,28 +619,36 @@ export function WebUrlSection({ readUrl, updateHosts, issuePairing, revokeDevice
             <div className={css.group}>
               <div className={css.title}>{t('cfTitle')}</div>
               <div className={css.desc}>{t('cfHint')}</div>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <input
-                  value={cfTeam}
-                  aria-label={t('cfTeam')}
-                  placeholder={t('cfTeam')}
-                  onChange={(event) => { setCfTeam(event.target.value.trim()) }}
-                  style={{ ...cfField, flex: '1 1 240px' }}
-                />
-                <input
-                  value={cfAud}
-                  aria-label={t('cfAudience')}
-                  placeholder={t('cfAudience')}
-                  onChange={(event) => { setCfAud(event.target.value.trim()) }}
-                  style={{ ...cfField, flex: '0 1 200px' }}
-                />
-                <input
-                  value={cfHost}
-                  aria-label={t('cfHost')}
-                  placeholder={t('cfHost')}
-                  onChange={(event) => { setCfHost(event.target.value.trim()) }}
-                  style={{ ...cfField, flex: '1 1 220px' }}
-                />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '460px' }}>
+                <label style={{ display: 'block' }}>
+                  <div className={css.desc} style={{ marginBottom: '4px' }}>{t('cfTeam')}</div>
+                  <input
+                    value={cfTeam}
+                    placeholder="myteam.cloudflareaccess.com"
+                    onChange={(event) => { setCfTeam(event.target.value.trim()) }}
+                    style={{ ...cfField, width: '100%' }}
+                  />
+                </label>
+                <label style={{ display: 'block' }}>
+                  <div className={css.desc} style={{ marginBottom: '4px' }}>{t('cfAudience')}</div>
+                  <input
+                    value={cfAud}
+                    placeholder="Application Audience Tag"
+                    onChange={(event) => { setCfAud(event.target.value.trim()) }}
+                    style={{ ...cfField, width: '100%' }}
+                  />
+                </label>
+                <label style={{ display: 'block' }}>
+                  <div className={css.desc} style={{ marginBottom: '4px' }}>{t('cfHost')}</div>
+                  <input
+                    value={cfHost}
+                    placeholder="dsh.example.com"
+                    onChange={(event) => { setCfHost(event.target.value.trim()) }}
+                    style={{ ...cfField, width: '100%' }}
+                  />
+                </label>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '10px' }}>
                 <label className={css.check}>
                   <input type="checkbox" checked={cfOn} onChange={(event) => { setCfOn(event.target.checked) }} />
                   {t('cfEnable')}
