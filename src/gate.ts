@@ -25,6 +25,16 @@ export interface CloudflarePolicy {
   verify: (token: string) => Promise<AccessResult>
   /** Record the outcome for the settings page. */
   report: (result: AccessResult, address: string) => void
+  /** Remember a verified identity as a device (returns its credential). */
+  remember: (email: string, address: string) => { id: string; secret: string } | null
+}
+
+/** Outcome of one authorization check. */
+export interface AuthDecision {
+  /** Whether the request may proceed. */
+  readonly allowed: boolean
+  /** Credential to set on the response, when a device was just remembered. */
+  readonly issue?: { id: string; secret: string }
 }
 
 /** Everything the control plane needs from the gateway. */
@@ -43,6 +53,15 @@ export interface ControlContext {
 
 /** Device cookie lifetime handed to a paired browser (one year). */
 const DEVICE_COOKIE_MAX_AGE = 365 * 24 * 60 * 60
+
+/**
+ * Build the `Set-Cookie` value for one device credential.
+ * @param issued - device id and secret.
+ * @returns the header value.
+ */
+export function buildDeviceCookie(issued: { id: string; secret: string }): string {
+  return `${DEVICE_COOKIE}=${issued.id}.${issued.secret}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${String(DEVICE_COOKIE_MAX_AGE)}`
+}
 
 /** Largest form body the pairing endpoints accept. */
 const FORM_LIMIT_BYTES = 4 * 1_024
@@ -129,23 +148,29 @@ export function fromCloudflare(request: IncomingMessage): boolean {
  * @param request - inbound request.
  * @param context - gateway facts.
  */
-export async function authorized(request: IncomingMessage, context: ControlContext): Promise<boolean> {
+export async function authorized(request: IncomingMessage, context: ControlContext): Promise<AuthDecision> {
   const policy = context.cloudflare
   if (policy !== undefined && policy.enabled() && fromCloudflare(request)) {
-    const token = request.headers['cf-access-jwt-assertion']
     const peer = peerOf(request)
+    // A device remembered by an earlier Access login skips the session entirely.
+    if (context.devices.verify(deviceCookie(request.headers.cookie), peer)) return { allowed: true }
+    const token = request.headers['cf-access-jwt-assertion']
     if (typeof token !== 'string' || token === '') {
       policy.report({ identity: null, reason: 'no Cloudflare Access assertion' }, peer)
-      return false
+      return { allowed: false }
     }
     const result = await policy.verify(token)
     policy.report(result, peer)
-    return result.identity !== null
+    if (result.identity === null) return { allowed: false }
+    // First visit after a successful Access login: remember this device for a
+    // year so the session does not have to be renewed on every request.
+    const issued = policy.remember(result.identity.email, peer)
+    return issued === null ? { allowed: true } : { allowed: true, issue: issued }
   }
-  if (context.access === 'open') return true
+  if (context.access === 'open') return { allowed: true }
   const peer = peerOf(request)
-  if (context.trustLoopback && isLoopbackAddress(peer)) return true
-  return context.devices.verify(deviceCookie(request.headers.cookie), peer)
+  if (context.trustLoopback && isLoopbackAddress(peer)) return { allowed: true }
+  return { allowed: context.devices.verify(deviceCookie(request.headers.cookie), peer) }
 }
 
 /**
@@ -220,7 +245,7 @@ async function claim(request: IncomingMessage, response: ServerResponse, context
   response.writeHead(303, {
     location: '/',
     'cache-control': 'no-store',
-    'set-cookie': `${DEVICE_COOKIE}=${result.device.id}.${result.secret}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${String(DEVICE_COOKIE_MAX_AGE)}`,
+    'set-cookie': buildDeviceCookie({ id: result.device.id, secret: result.secret }),
   })
   response.end()
 }

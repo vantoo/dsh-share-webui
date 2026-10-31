@@ -107,6 +107,19 @@ the `Cf-Access-Jwt-Assertion` Cloudflare attaches to each request:
   keys are fetched from `<team>/cdn-cgi/access/certs` and cached for 10 minutes,
   and a failed fetch **fails closed**
 
+### Remembered devices (one year)
+
+After the first successful Access login the plugin hands the browser a
+**year-long** device credential (the same `dsh-share-device` cookie pairing
+uses). Later visits skip the Access session entirely — log in once, stay in for
+a year.
+
+- The device shows up in the device list under the Access email and can be
+  revoked individually, effective immediately
+- Cloudflare's `Session Duration` therefore only has to cover that first login
+- Same trust model as pairing: a stolen cookie impersonates the device until you
+  revoke it
+
 ### Setup
 
 1. Create a Zero Trust Access application pointing at the tunnel hostname

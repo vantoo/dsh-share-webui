@@ -406,6 +406,7 @@ async function mount(ctx: Context, config: Config | undefined): Promise<void> {
     enabled: (): boolean => cloudflareState.config.enabled,
     config: (): CloudflareConfig => cloudflareState.config,
     verify: async (token: string) => verifyAccessRequest(token, cloudflareState.config),
+    remember: (email: string, address: string): { id: string; secret: string } | null => devices.remember(email, address),
     report: (result: { identity: { email: string } | null; reason: string }, address: string): void => {
       cloudflareState.last = { email: result.identity?.email ?? '', reason: result.reason, at: Date.now() }
       if (result.identity === null) console.warn(`[dsh-share-webui] cloudflare rejected ${address}: ${result.reason}`)

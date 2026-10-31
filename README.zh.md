@@ -81,6 +81,14 @@ dsh plugin --profile desktop add link:/绝对路径/dsh-share-webui
 - 本机直连与局域网请求没有这些头，仍走原来的配对逻辑，两条路径互不影响
 - 验签是严格的：只接受 RS256，校验 `iss` / `aud` / `exp` / `nbf`；密钥从 `<team>/cdn-cgi/access/certs` 获取并缓存 10 分钟，取不到密钥时**失败关闭**
 
+### 记住设备（一年有效）
+
+首次通过 Access 验证后，插件会给这台设备下发一个**一年期**的设备凭证（`dsh-share-device` cookie，与配对同款）。之后访问不再要求 Cloudflare 会话，相当于「登录一次管一年」。
+
+- 设备列表里这台设备的名字就是 Access 的 email，可以单独撤销，撤销即时生效
+- 所以 Cloudflare 那边的 `Session Duration` 只需覆盖「首次登录」那一次，不用设得很长
+- 安全模型与配对一致：cookie 被偷 = 该设备被冒用，直到你撤销为止
+
 ### 配置步骤
 
 1. 在 Cloudflare Zero Trust 建一个 Access 应用，指向隧道域名
