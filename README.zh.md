@@ -127,6 +127,13 @@ pnpm --filter dsh-share-webui bundle
 
 只做小改动时也可以直接编辑 `lib/index.js`、`lib/client.js`，之后重启应用。
 
+> **`lib/` 是必须入库的**：插件用 `dsh plugin add github:vantoo/dsh-share-webui` 安装时是「clone 后直接
+> 加载 `lib/index.js`」，没有构建步骤。因此本仓库同时提交 `src/`（可读源码）与 `lib/`（运行产物），
+> 社区插件 dshmarket 也是这个做法。
+>
+> 代价是两侧要手工保持一致：**改 `src/` 时必须同步改 `lib/`**（反之亦然）。没有工具链时无法自动生成，
+> 提交前请对照检查同一处逻辑。
+
 ## 许可
 
 MIT © 2026 [vantoo](https://github.com/vantoo)。

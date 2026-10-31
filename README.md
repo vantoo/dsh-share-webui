@@ -162,6 +162,15 @@ pnpm --filter dsh-share-webui bundle
 Editing `lib/index.js` or `lib/client.js` directly also works for quick
 iteration (restart the app afterwards).
 
+> **`lib/` must be committed**: `dsh plugin add github:vantoo/dsh-share-webui`
+> clones the repo and loads `lib/index.js` directly — there is no build step.
+> That is why this repository ships both `src/` (readable sources) and `lib/`
+> (runtime artifacts), the same split dshmarket uses.
+>
+> The cost is dual maintenance: **any change in `src/` must be mirrored in
+> `lib/`** (and vice versa). Without the monorepo toolchain there is no
+> generator, so diff the same logic in both trees before committing.
+
 ## License
 
 MIT © 2026 [vantoo](https://github.com/vantoo).
