@@ -93,7 +93,8 @@ dsh plugin --profile desktop add link:/绝对路径/dsh-share-webui
 
 1. 在 Cloudflare Zero Trust 建一个 Access 应用，指向隧道域名
 2. 记下 **Application Audience (AUD) Tag** 与 team domain（形如 `myteam.cloudflareaccess.com`）
-3. 设置 → Web 共享 → Cloudflare Access：填这两项、勾「启用」、点「应用」
+3. 设置 → Web 共享 → Cloudflare Access：填 **team domain、AUD tag、公网域名** 三项、勾「启用」、点「应用」
+   （公网域名会并入 Host 白名单；不填的话隧道请求会被 403 挡掉）
 4. 面板会显示最近一次隧道请求的结果：验证通过的 email，或拒绝原因
 
 > 插件直接连 `https://<team>/cdn-cgi/access/certs`，不走系统代理。若宿主机必须经代理出网，验签会失败（失败关闭，不会误放行）。

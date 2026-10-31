@@ -198,14 +198,24 @@ export class ShareWebuiService extends TypertRemoteService {
    * @param enabled - `on` or `off`.
    * @returns refreshed state.
    */
-  async applyCloudflare(origin: string, teamDomain: string, audience: string, enabled: string): Promise<ShareWebuiResult> {
+  async applyCloudflare(
+    origin: string,
+    teamDomain: string,
+    audience: string,
+    host: string,
+    enabled: string,
+  ): Promise<ShareWebuiResult> {
     this.assertLocal(origin)
     if (this.cloudflareHook === null) throw new Error('shareWebui: Cloudflare Access is unavailable')
     const domain = normalizeTeamDomain(teamDomain)
     const aud = String(audience).trim()
+    const publicHost = String(host).trim().toLowerCase().replace(/^https?:\/\//u, '').replace(/\/.*$/u, '')
     const on = String(enabled) === 'on'
     if (on && (domain === '' || aud === '')) throw new Error('shareWebui: team domain and audience are required')
-    await this.cloudflareHook.apply({ enabled: on, teamDomain: domain, audience: aud })
+    if (publicHost !== '' && !/^[a-z0-9.-]+\.[a-z]{2,}$/u.test(publicHost)) {
+      throw new Error(`shareWebui: invalid public hostname ${publicHost}`)
+    }
+    await this.cloudflareHook.apply({ enabled: on, teamDomain: domain, audience: aud, host: publicHost })
     return this.current(origin)
   }
 

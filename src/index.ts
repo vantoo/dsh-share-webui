@@ -321,6 +321,7 @@ function loadState(): PersistedState | null {
           enabled: (rawCloudflare as { enabled?: unknown }).enabled === true,
           teamDomain: typeof (rawCloudflare as { teamDomain?: unknown }).teamDomain === 'string' ? (rawCloudflare as { teamDomain: string }).teamDomain : '',
           audience: typeof (rawCloudflare as { audience?: unknown }).audience === 'string' ? (rawCloudflare as { audience: string }).audience : '',
+          host: typeof (rawCloudflare as { host?: unknown }).host === 'string' ? (rawCloudflare as { host: string }).host : '',
         }
       : null
     if (hosts === null && port === null && cloudflare === null) return null
@@ -399,7 +400,7 @@ async function mount(ctx: Context, config: Config | undefined): Promise<void> {
     config: CloudflareConfig
     last: { email: string; reason: string; at: number }
   } = {
-    config: persisted?.cloudflare ?? { enabled: false, teamDomain: '', audience: '' },
+    config: persisted?.cloudflare ?? { enabled: false, teamDomain: '', audience: '', host: '' },
     last: { email: '', reason: '', at: 0 },
   }
   const cloudflarePolicy = {
@@ -481,6 +482,7 @@ async function mount(ctx: Context, config: Config | undefined): Promise<void> {
             hostname(),
             hostname().replace(/\.local$/u, ''),
             ...hosts,
+            ...(cloudflareState.config.enabled && cloudflareState.config.host !== '' ? [cloudflareState.config.host] : []),
           ].map((entry) => entry.toLowerCase()))],
           access,
           trustLoopback,
@@ -553,14 +555,22 @@ async function mount(ctx: Context, config: Config | undefined): Promise<void> {
             enabled: cloudflareState.config.enabled ? 'on' : 'off',
             teamDomain: cloudflareState.config.teamDomain,
             audience: cloudflareState.config.audience,
+            host: cloudflareState.config.host,
             lastEmail: cloudflareState.last.email,
             lastReason: cloudflareState.last.reason,
             lastAt: cloudflareState.last.at === 0 ? '' : new Date(cloudflareState.last.at).toISOString(),
           }),
           apply: async (next) => {
+            const hostChanged = cloudflareState.config.host !== next.host
+              || cloudflareState.config.enabled !== next.enabled
             cloudflareState.config = next
             forgetJwks()
             saveState(desired, activePort, cloudflareState.config)
+            // The public hostname feeds the Host allow-list, so rebind on change.
+            if (hostChanged) {
+              applied = null
+              await schedule(desired)
+            }
           },
         })
       }

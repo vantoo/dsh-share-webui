@@ -94,9 +94,9 @@ export async function apply(ctx: ClientContext): Promise<void> {
       unwrap(await scope.remote.shareWebui.applyPort(window.location.origin, port), 'applyPort')
     const clearPairing = async (): Promise<ShareWebuiResult> =>
       unwrap(await scope.remote.shareWebui.cancelPairing(window.location.origin), 'cancelPairing')
-    const saveCloudflare = async (teamDomain: string, audience: string, enabled: boolean): Promise<ShareWebuiResult> =>
+    const saveCloudflare = async (teamDomain: string, audience: string, host: string, enabled: boolean): Promise<ShareWebuiResult> =>
       unwrap(
-        await scope.remote.shareWebui.applyCloudflare(window.location.origin, teamDomain, audience, enabled ? 'on' : 'off'),
+        await scope.remote.shareWebui.applyCloudflare(window.location.origin, teamDomain, audience, host, enabled ? 'on' : 'off'),
         'applyCloudflare',
       )
     slots.inject('settings.section', () => slots.register({

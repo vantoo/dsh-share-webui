@@ -29,7 +29,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     /** Drop the pending pairing code (host machine only). */
     cancelPairing: (origin: string) => Promise<RemoteResult<ShareWebuiResult>>
     /** Update Cloudflare Access settings (host machine only). */
-    applyCloudflare: (origin: string, teamDomain: string, audience: string, enabled: string) => Promise<RemoteResult<ShareWebuiResult>>
+    applyCloudflare: (origin: string, teamDomain: string, audience: string, host: string, enabled: string) => Promise<RemoteResult<ShareWebuiResult>>
   }
   interface TypertRemoteMap {
     'shareWebui/current': (origin: string) => Promise<RemoteResult<ShareWebuiResult>>
@@ -39,7 +39,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'shareWebui/checkPort': (origin: string, port: string) => Promise<RemoteResult<ShareWebuiPortCheck>>
     'shareWebui/applyPort': (origin: string, port: string) => Promise<RemoteResult<ShareWebuiResult>>
     'shareWebui/cancelPairing': (origin: string) => Promise<RemoteResult<ShareWebuiResult>>
-    'shareWebui/applyCloudflare': (origin: string, teamDomain: string, audience: string, enabled: string) => Promise<RemoteResult<ShareWebuiResult>>
+    'shareWebui/applyCloudflare': (origin: string, teamDomain: string, audience: string, host: string, enabled: string) => Promise<RemoteResult<ShareWebuiResult>>
   }
   interface TypertRemoteNamespaceMap {
     shareWebui: TypertRemoteNamespace$shareWebui

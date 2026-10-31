@@ -125,8 +125,9 @@ a year.
 1. Create a Zero Trust Access application pointing at the tunnel hostname
 2. Note the **Application Audience (AUD) Tag** and the team domain
    (`myteam.cloudflareaccess.com`)
-3. Settings → Web sharing → Cloudflare Access: fill both, tick "Enabled", press
-   "Apply"
+3. Settings → Web sharing → Cloudflare Access: fill **team domain, AUD tag and
+   the public hostname**, tick "Enabled", press "Apply" (the hostname joins the
+   Host allow-list; without it tunnel requests are rejected with 403)
 4. The panel reports the last tunnel request: the verified email, or why it was
    rejected
 

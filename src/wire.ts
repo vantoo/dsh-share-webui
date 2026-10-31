@@ -40,6 +40,8 @@ export interface ShareWebuiCloudflare {
   readonly teamDomain: string
   /** Access application AUD tag. */
   readonly audience: string
+  /** Public hostname served through the tunnel, or empty. */
+  readonly host: string
   /** Email of the last verified assertion, or empty. */
   readonly lastEmail: string
   /** Reason the last assertion was rejected, or empty. */
@@ -74,6 +76,7 @@ export const RESULT_SCHEMA = z.object({
     enabled: z.string(),
     teamDomain: z.string(),
     audience: z.string(),
+    host: z.string(),
     lastEmail: z.string(),
     lastReason: z.string(),
     lastAt: z.string(),
@@ -246,6 +249,7 @@ export const applyCloudflareInvocation = Object.freeze({
     Object.freeze({ name: 'origin', wire: 'origin', source: 'json', codec: strict('dsh-share-webui/types#origin', ORIGIN_SCHEMA) }),
     Object.freeze({ name: 'teamDomain', wire: 'teamDomain', source: 'json', codec: strict('dsh-share-webui/types#teamDomain', z.string()) }),
     Object.freeze({ name: 'audience', wire: 'audience', source: 'json', codec: strict('dsh-share-webui/types#audience', z.string()) }),
+    Object.freeze({ name: 'host', wire: 'host', source: 'json', codec: strict('dsh-share-webui/types#host', z.string()) }),
     Object.freeze({ name: 'enabled', wire: 'enabled', source: 'json', codec: strict('dsh-share-webui/types#enabled', z.string()) }),
   ]),
   result: strict('dsh-share-webui/types#ShareWebuiResult', RESULT_SCHEMA),

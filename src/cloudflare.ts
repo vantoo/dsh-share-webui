@@ -23,6 +23,8 @@ export interface CloudflareConfig {
   readonly teamDomain: string
   /** Access application audience (AUD) tag. */
   readonly audience: string
+  /** Public hostname served through the tunnel, or empty. */
+  readonly host: string
 }
 
 /** Identity carried by a verified assertion. */

@@ -96,6 +96,8 @@ export const zh = {
   cfTeam: 'Team domain',
   /** Audience field label. */
   cfAudience: 'AUD tag',
+  /** Public hostname field label. */
+  cfHost: '公网域名',
   /** Last verification succeeded. */
   cfLastOk: '最近通过：{{email}}（{{time}}）',
   /** Last verification failed. */
@@ -168,6 +170,7 @@ export const en: Record<keyof typeof zh, string> = {
   cfEnable: 'Enabled',
   cfTeam: 'Team domain',
   cfAudience: 'AUD tag',
+  cfHost: 'Public hostname',
   cfLastOk: 'Last verified: {{email}} ({{time}})',
   cfLastFail: 'Last tunnel request was rejected: {{reason}}',
   cfNone: 'No tunnel request has been verified yet.',

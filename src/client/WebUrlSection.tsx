@@ -30,7 +30,7 @@ export interface WebUrlSectionInjected {
   /** Drop the pending pairing code (host machine only). */
   clearPairing: () => Promise<ShareWebuiResult>
   /** Update Cloudflare Access settings (host machine only). */
-  saveCloudflare: (teamDomain: string, audience: string, enabled: boolean) => Promise<ShareWebuiResult>
+  saveCloudflare: (teamDomain: string, audience: string, host: string, enabled: boolean) => Promise<ShareWebuiResult>
 }
 
 /** Full component props assembled by the settings-section renderer. */
@@ -193,6 +193,7 @@ export function WebUrlSection({ readUrl, updateHosts, issuePairing, revokeDevice
   const [portBusy, setPortBusy] = useState(false)
   const [cfTeam, setCfTeam] = useState('')
   const [cfAud, setCfAud] = useState('')
+  const [cfHost, setCfHost] = useState('')
   const [cfOn, setCfOn] = useState(false)
   const [cfNote, setCfNote] = useState('')
   const [cfBad, setCfBad] = useState(false)
@@ -225,6 +226,7 @@ export function WebUrlSection({ readUrl, updateHosts, issuePairing, revokeDevice
           setPortText(typeof result.port === 'string' ? result.port : '')
           setCfTeam(result.cloudflare?.teamDomain ?? '')
           setCfAud(result.cloudflare?.audience ?? '')
+          setCfHost(result.cloudflare?.host ?? '')
           setCfOn(result.cloudflare?.enabled === 'on')
         },
         (error: unknown) => {
@@ -401,10 +403,11 @@ export function WebUrlSection({ readUrl, updateHosts, issuePairing, revokeDevice
     setCfBad(false)
     void (async () => {
       try {
-        const result = await saveCloudflare(cfTeam, cfAud, cfOn)
+        const result = await saveCloudflare(cfTeam, cfAud, cfHost, cfOn)
         setState({ status: 'ready', result })
         setCfTeam(result.cloudflare?.teamDomain ?? cfTeam)
         setCfAud(result.cloudflare?.audience ?? cfAud)
+        setCfHost(result.cloudflare?.host ?? cfHost)
         setCfNote(t('cfSaved'))
       } catch (error: unknown) {
         setCfBad(true)
@@ -630,6 +633,13 @@ export function WebUrlSection({ readUrl, updateHosts, issuePairing, revokeDevice
                   placeholder={t('cfAudience')}
                   onChange={(event) => { setCfAud(event.target.value.trim()) }}
                   style={{ ...cfField, flex: '0 1 200px' }}
+                />
+                <input
+                  value={cfHost}
+                  aria-label={t('cfHost')}
+                  placeholder={t('cfHost')}
+                  onChange={(event) => { setCfHost(event.target.value.trim()) }}
+                  style={{ ...cfField, flex: '1 1 220px' }}
                 />
                 <label className={css.check}>
                   <input type="checkbox" checked={cfOn} onChange={(event) => { setCfOn(event.target.checked) }} />
