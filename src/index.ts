@@ -250,13 +250,17 @@ function syncConnectionTrust(baseUrl: URL, host: string): boolean {
     const file = fileURLToPath(new URL('cordis.patch.yml', baseUrl))
     const text = readFileSync(file, 'utf8')
     if (text.includes('id: connection')) return false
+    // Overlay YAML takes literals only: the `!!js` tag the bundles use is
+    // rejected here. Replacing the list is safe because the desktop app passes
+    // no --trusted-host values.
     const block = [
       '',
       '# 由 dsh-share-webui 写入：让 DSH 知道存在非回环访问来源，目录选择器改用网页版。',
       '- id: connection',
       '  name: "@deepseek-ai/dsh-client-connection"',
       '  config:',
-      `    trustedHosts: !!js [...ctx.webStartup.trustedHosts, ${JSON.stringify(host)}]`,
+      '    trustedHosts:',
+      `      - ${host}`,
       '',
     ].join('\n')
     writeFileSync(file, text.endsWith('\n') ? text + block : `${text}\n${block}`, 'utf8')
