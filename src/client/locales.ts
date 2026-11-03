@@ -89,7 +89,7 @@ export const zh = {
   /** Cloudflare Access group title. */
   cfTitle: 'Cloudflare Access',
   /** Cloudflare Access guidance. */
-  cfHint: '通过 cloudflared 隧道进来的请求必须携带有效的 Access 断言；本机与局域网仍走配对，互不影响。',
+  cfHint: '通过 cloudflared 隧道进来的请求必须携带有效的 Access 断言；本机与局域网仍走配对，互不影响。首次启用后请重启 DSH：目录选择器会从宿主系统对话框切换为网页版。',
   /** Enable checkbox label. */
   cfEnable: '启用',
   /** Team domain field label. */
@@ -166,7 +166,7 @@ export const en: Record<keyof typeof zh, string> = {
   accessCancel: 'Cancel code',
   accessCodeLabel: 'Pairing code',
   cfTitle: 'Cloudflare Access',
-  cfHint: 'Requests arriving through a cloudflared tunnel must carry a valid Access assertion; loopback and LAN keep using pairing.',
+  cfHint: 'Requests arriving through a cloudflared tunnel must carry a valid Access assertion; loopback and LAN keep using pairing. Restart dsh after enabling: the workspace folder picker then runs in the page.',
   cfEnable: 'Enabled',
   cfTeam: 'Team domain',
   cfAudience: 'AUD tag',

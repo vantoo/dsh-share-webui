@@ -9,6 +9,7 @@
 import { execFileSync } from 'node:child_process'
 import { createSocket } from 'node:dgram'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import type { CloudflareConfig } from './cloudflare.ts'
 import { forgetJwks, verifyAccessRequest } from './cloudflare.ts'
 import { createServer as createNetServer } from 'node:net'
@@ -234,6 +235,36 @@ export function selectionOf(raw: readonly string[] | undefined): string[] {
     if (SELECTABLE.has(key) && !keys.includes(key)) keys.push(key)
   }
   return keys
+}
+
+/**
+ * Teach the profile's connection policy about this public host, so the app
+ * mounts its in-page directory picker instead of the host system chooser (the
+ * shipped chooser resolves at boot from `allowsRemoteAuthorities`).
+ * @param baseUrl - plugin base URL, pointing at the profile directory.
+ * @param host - public hostname to trust.
+ * @returns true when the patch file was written (a restart is then required).
+ */
+function syncConnectionTrust(baseUrl: URL, host: string): boolean {
+  try {
+    const file = fileURLToPath(new URL('cordis.patch.yml', baseUrl))
+    const text = readFileSync(file, 'utf8')
+    if (text.includes('id: connection')) return false
+    const block = [
+      '',
+      '# 由 dsh-share-webui 写入：让 DSH 知道存在非回环访问来源，目录选择器改用网页版。',
+      '- id: connection',
+      '  name: "@deepseek-ai/dsh-client-connection"',
+      '  config:',
+      `    trustedHosts: !!js [...ctx.webStartup.trustedHosts, ${JSON.stringify(host)}]`,
+      '',
+    ].join('\n')
+    writeFileSync(file, text.endsWith('\n') ? text + block : `${text}\n${block}`, 'utf8')
+    return true
+  } catch (error: unknown) {
+    console.warn(`[dsh-share-webui] could not record the connection trust: ${error instanceof Error ? error.message : String(error)}`)
+    return false
+  }
 }
 
 /** Translate the `hosts` config into an initial selection plus literal hosts. */
@@ -566,6 +597,13 @@ async function mount(ctx: Context, config: Config | undefined): Promise<void> {
             cloudflareState.config = next
             forgetJwks()
             saveState(desired, activePort, cloudflareState.config)
+            if (next.enabled && next.host !== '') {
+              // The shipped picker resolves at boot; the next start uses the
+              // in-page browser instead of the host system dialog.
+              if (syncConnectionTrust(new URL(ctx.baseUrl), next.host)) {
+                console.info('[dsh-share-webui] connection trust recorded; restart dsh to switch the directory picker')
+              }
+            }
             // The public hostname feeds the Host allow-list, so rebind on change.
             if (hostChanged) {
               applied = null
