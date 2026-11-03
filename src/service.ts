@@ -9,7 +9,9 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import type { DeviceStore } from './pairing.ts'
-import type { ShareWebuiDevice, ShareWebuiPairing, ShareWebuiPortCheck, ShareWebuiResult } from './wire.ts'
+import type { CloudflareConfig } from './cloudflare.ts'
+import { normalizeTeamDomain } from './cloudflare.ts'
+import type { ShareWebuiCloudflare, ShareWebuiDevice, ShareWebuiPairing, ShareWebuiPortCheck, ShareWebuiResult } from './wire.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -97,6 +99,14 @@ export interface ShareWebuiServiceConfig extends Partial<SelectionState> {
   readonly port?: number
 }
 
+/** What the plugin body offers for Cloudflare Access management. */
+export interface CloudflareHook {
+  /** Current settings plus the last verification outcome. */
+  readonly read: () => ShareWebuiCloudflare
+  /** Persist new settings and drop cached keys. */
+  readonly apply: (config: CloudflareConfig) => Promise<void>
+}
+
 /** What the plugin body offers for port management. */
 export interface PortHook {
   /** Probe whether a candidate port can be bound. */
@@ -148,6 +158,9 @@ export class ShareWebuiService extends TypertRemoteService {
   /** Port management hook owned by the plugin body. */
   private portHook: PortHook | null = null
 
+  /** Cloudflare Access hook owned by the plugin body. */
+  private cloudflareHook: CloudflareHook | null = null
+
   /**
    * @param ctx - context carrying the `connection` service.
    * @param config - initial selection and allow-list.
@@ -167,6 +180,43 @@ export class ShareWebuiService extends TypertRemoteService {
    */
   setPortHook(hook: PortHook | null): void {
     this.portHook = hook
+  }
+
+  /**
+   * Install (or clear) the Cloudflare Access hook.
+   * @param hook - hook installed by the plugin body, or null.
+   */
+  setCloudflareHook(hook: CloudflareHook | null): void {
+    this.cloudflareHook = hook
+  }
+
+  /**
+   * Update Cloudflare Access settings.
+   * @param origin - page origin; must be the host machine.
+   * @param teamDomain - team domain, with or without scheme.
+   * @param audience - Access application AUD tag.
+   * @param enabled - `on` or `off`.
+   * @returns refreshed state.
+   */
+  async applyCloudflare(
+    origin: string,
+    teamDomain: string,
+    audience: string,
+    host: string,
+    enabled: string,
+  ): Promise<ShareWebuiResult> {
+    this.assertLocal(origin)
+    if (this.cloudflareHook === null) throw new Error('shareWebui: Cloudflare Access is unavailable')
+    const domain = normalizeTeamDomain(teamDomain)
+    const aud = String(audience).trim()
+    const publicHost = String(host).trim().toLowerCase().replace(/^https?:\/\//u, '').replace(/\/.*$/u, '')
+    const on = String(enabled) === 'on'
+    if (on && (domain === '' || aud === '')) throw new Error('shareWebui: team domain and audience are required')
+    if (publicHost !== '' && !/^[a-z0-9.-]+\.[a-z]{2,}$/u.test(publicHost)) {
+      throw new Error(`shareWebui: invalid public hostname ${publicHost}`)
+    }
+    await this.cloudflareHook.apply({ enabled: on, teamDomain: domain, audience: aud, host: publicHost })
+    return this.current(origin)
   }
 
   /**
@@ -270,6 +320,7 @@ export class ShareWebuiService extends TypertRemoteService {
       local: local ? 'host' : 'remote',
       devices: local ? this.devices() : [],
       port: String(this.port),
+      cloudflare: local && this.cloudflareHook !== null ? this.cloudflareHook.read() : undefined,
     }
   }
 

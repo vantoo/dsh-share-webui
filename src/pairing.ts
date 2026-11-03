@@ -189,6 +189,30 @@ export class DeviceStore {
       return { ok: false, reason: 'mismatch' }
     }
     this.code = null
+    const created = this.create(label, address)
+    return { ok: true, device: created.device, secret: created.secret }
+  }
+
+  /**
+   * Remember one device without a pairing code (Cloudflare Access already
+   * proved who it is).
+   * @param label - label for the device list, usually the Access email.
+   * @param address - peer address.
+   * @returns the credential to hand back, or null when persistence failed.
+   */
+  remember(label: string, address: string): { id: string; secret: string } | null {
+    const created = this.create(label, address)
+    return { id: created.device.id, secret: created.secret }
+  }
+
+  /**
+   * Append one device record and persist it.
+   * @param label - label for the device list.
+   * @param address - peer address.
+   * @returns the stored device plus its plaintext secret.
+   */
+  private create(label: string, address: string): { device: DeviceView; secret: string } {
+    const now = Date.now()
     const secret = randomSecret()
     const record: DeviceRecord = {
       id: randomId(),
@@ -201,7 +225,6 @@ export class DeviceStore {
     this.devices.push(record)
     this.save()
     return {
-      ok: true,
       device: {
         id: record.id,
         label: record.label,

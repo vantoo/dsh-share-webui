@@ -13,8 +13,8 @@
 
 import { createServer, request as httpRequest } from 'node:http'
 import type { IncomingHttpHeaders, IncomingMessage, Server, ServerResponse } from 'node:http'
-import { authorized, handleControl, serveDoor } from './gate.ts'
-import type { ControlContext } from './gate.ts'
+import { authorized, buildDeviceCookie, handleControl, serveDoor } from './gate.ts'
+import type { CloudflarePolicy, ControlContext } from './gate.ts'
 import type { DeviceStore } from './pairing.ts'
 
 /** Live harness server plus the credentials source behind the gateway. */
@@ -35,6 +35,8 @@ export interface GatewayTarget {
   readonly trustLoopback: boolean
   /** Paired devices and the live pairing code. */
   readonly devices: DeviceStore
+  /** Cloudflare Access policy, when configured. */
+  readonly cloudflare?: CloudflarePolicy
   /** Mint one fresh tokenized handshake URL. */
   readonly mintUrl: () => string
 }
@@ -191,6 +193,7 @@ export class FixedPortGateway {
       trustLoopback: this.target.trustLoopback,
       devices: this.target.devices,
       allowedHosts: this.target.allowedHosts,
+      cloudflare: this.target.cloudflare,
     }
   }
 
@@ -254,13 +257,16 @@ export class FixedPortGateway {
       await handleControl(request, response, path, this.control())
       return
     }
-    if (!authorized(request, this.control())) {
+    const decision = await authorized(request, this.control())
+    if (!decision.allowed) {
       serveDoor(request, response)
       return
     }
+    // A first Access login hands the browser a year-long device credential.
+    const remember = decision.issue === undefined ? null : buildDeviceCookie(decision.issue)
     let cookie = this.liveCookie()
     if (cookie === null) cookie = await this.exchange()
-    await this.relay(request, response, cookie, 0)
+    await this.relay(request, response, cookie, 0, remember)
   }
 
   /**
@@ -270,7 +276,13 @@ export class FixedPortGateway {
    * @param cookie - cookie to attach.
    * @param attempt - completed attempts.
    */
-  private async relay(request: IncomingMessage, response: ServerResponse, cookie: string | null, attempt: number): Promise<void> {
+  private async relay(
+    request: IncomingMessage,
+    response: ServerResponse,
+    cookie: string | null,
+    attempt: number,
+    remember: string | null = null,
+  ): Promise<void> {
     const upstream = openUpstream(this.target, request, this.headersFor(request.headers, cookie), (upstreamResponse) => {
       if (upstreamResponse.statusCode === 401 && attempt === 0) {
         upstreamResponse.resume()
@@ -280,7 +292,7 @@ export class FixedPortGateway {
             if (!response.writableEnded) response.end('fixed entry: session refresh failed')
             return
           }
-          void this.relay(request, response, fresh, attempt + 1)
+          void this.relay(request, response, fresh, attempt + 1, remember)
         }).catch((error: unknown) => {
           console.error(`[dsh-share-webui] session refresh failed: ${error instanceof Error ? error.message : String(error)}`)
           if (!response.headersSent) response.writeHead(502, { 'content-type': 'text/plain; charset=utf-8' })
@@ -293,6 +305,7 @@ export class FixedPortGateway {
         if (value === undefined || HIDDEN_RESPONSE.has(name.toLowerCase())) continue
         headers[name] = value
       }
+      if (remember !== null) headers['set-cookie'] = remember
       response.writeHead(upstreamResponse.statusCode ?? 502, headers)
       upstreamResponse.on('error', () => {
         if (!response.destroyed) response.destroy()
@@ -321,7 +334,8 @@ export class FixedPortGateway {
       socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n')
       return
     }
-    if (!authorized(request, this.control())) {
+    const decision = await authorized(request, this.control())
+    if (!decision.allowed) {
       socket.end('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\nContent-Length: 0\r\n\r\n')
       return
     }
@@ -336,6 +350,7 @@ export class FixedPortGateway {
         if (name.toLowerCase() === 'set-cookie') continue
         lines.push(`${name}: ${upstreamResponse.rawHeaders[index + 1]}`)
       }
+      if (decision.issue !== undefined) lines.push(`Set-Cookie: ${buildDeviceCookie(decision.issue)}`)
       socket.write(`${lines.join('\r\n')}\r\n\r\n`)
       if (upstreamHead.length > 0) socket.write(upstreamHead)
       else if (head.length > 0) upstreamSocket.write(head)
@@ -417,7 +432,13 @@ export class FixedPortGateway {
       if (lower === 'origin') {
         try {
           const origin = new URL(String(value))
-          if (origin.port === String(this.port)) {
+          const host = origin.host.toLowerCase()
+          const bare = origin.hostname.toLowerCase()
+          // Rewrite whenever the origin names an entry we already accept: a
+          // tunnel origin carries no port, so a port comparison alone misses it.
+          if (origin.port === String(this.port)
+            || this.target.allowedHosts.includes(host)
+            || this.target.allowedHosts.includes(bare)) {
             headers.origin = `http://${this.target.authority}`
             continue
           }

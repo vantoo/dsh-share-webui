@@ -86,6 +86,28 @@ export const zh = {
   accessCancel: '取消配对码',
   /** Pairing-code group label. */
   accessCodeLabel: '配对码',
+  /** Cloudflare Access group title. */
+  cfTitle: 'Cloudflare Access',
+  /** Cloudflare Access guidance. */
+  cfHint: '通过 cloudflared 隧道进来的请求必须携带有效的 Access 断言；本机与局域网仍走配对，互不影响。',
+  /** Enable checkbox label. */
+  cfEnable: '启用',
+  /** Team domain field label. */
+  cfTeam: 'Team domain',
+  /** Audience field label. */
+  cfAudience: 'AUD tag',
+  /** Public hostname field label. */
+  cfHost: '公网域名',
+  /** Last verification succeeded. */
+  cfLastOk: '最近通过：{{email}}（{{time}}）',
+  /** Last verification failed. */
+  cfLastFail: '最近一次隧道请求被拒：{{reason}}',
+  /** No verification recorded yet. */
+  cfNone: '还没有隧道请求经过验证。',
+  /** Save failed. */
+  cfFailed: '保存失败：{{message}}',
+  /** Save succeeded. */
+  cfSaved: '已保存',
   /** Expiry line under the code. */
   accessExpires: '有效期至 {{time}}，单次使用。',
   /** Minting failure line. */
@@ -143,6 +165,17 @@ export const en: Record<keyof typeof zh, string> = {
   accessRegenerate: 'Generate another',
   accessCancel: 'Cancel code',
   accessCodeLabel: 'Pairing code',
+  cfTitle: 'Cloudflare Access',
+  cfHint: 'Requests arriving through a cloudflared tunnel must carry a valid Access assertion; loopback and LAN keep using pairing.',
+  cfEnable: 'Enabled',
+  cfTeam: 'Team domain',
+  cfAudience: 'AUD tag',
+  cfHost: 'Public hostname',
+  cfLastOk: 'Last verified: {{email}} ({{time}})',
+  cfLastFail: 'Last tunnel request was rejected: {{reason}}',
+  cfNone: 'No tunnel request has been verified yet.',
+  cfFailed: 'Could not save: {{message}}',
+  cfSaved: 'Saved',
   accessExpires: 'Valid until {{time}}, single use.',
   accessFailed: 'Could not mint a code: {{message}}',
   accessDevices: 'Paired devices',

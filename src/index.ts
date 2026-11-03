@@ -9,6 +9,8 @@
 import { execFileSync } from 'node:child_process'
 import { createSocket } from 'node:dgram'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import type { CloudflareConfig } from './cloudflare.ts'
+import { forgetJwks, verifyAccessRequest } from './cloudflare.ts'
 import { createServer as createNetServer } from 'node:net'
 import { homedir, hostname, networkInterfaces } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -295,12 +297,14 @@ function devicesPath(): string {
   return join(homeDirectory(), 'share-webui-devices.json')
 }
 
-/** Persisted user state: selection plus fixed port. */
+/** Persisted user state: selection, fixed port and Cloudflare Access. */
 interface PersistedState {
   /** Selection keys. */
   hosts: string[]
   /** Fixed port, or null when the file predates port persistence. */
   port: number | null
+  /** Cloudflare Access settings, or null when never configured. */
+  cloudflare: CloudflareConfig | null
 }
 
 /** Read the persisted state, if any. */
@@ -311,20 +315,29 @@ function loadState(): PersistedState | null {
     const hosts = Array.isArray((data as { hosts?: unknown }).hosts) ? (data as { hosts: string[] }).hosts : null
     const raw = (data as { port?: unknown }).port
     const port = typeof raw === 'number' && Number.isInteger(raw) ? raw : null
-    if (hosts === null && port === null) return null
-    return { hosts: hosts ?? [], port }
+    const rawCloudflare = (data as { cloudflare?: unknown }).cloudflare
+    const cloudflare = typeof rawCloudflare === 'object' && rawCloudflare !== null
+      ? {
+          enabled: (rawCloudflare as { enabled?: unknown }).enabled === true,
+          teamDomain: typeof (rawCloudflare as { teamDomain?: unknown }).teamDomain === 'string' ? (rawCloudflare as { teamDomain: string }).teamDomain : '',
+          audience: typeof (rawCloudflare as { audience?: unknown }).audience === 'string' ? (rawCloudflare as { audience: string }).audience : '',
+          host: typeof (rawCloudflare as { host?: unknown }).host === 'string' ? (rawCloudflare as { host: string }).host : '',
+        }
+      : null
+    if (hosts === null && port === null && cloudflare === null) return null
+    return { hosts: hosts ?? [], port, cloudflare }
   } catch {
     return null
   }
 }
 
 /** Persist the selection and port. */
-function saveState(keys: readonly string[], port: number): void {
+function saveState(keys: readonly string[], port: number, cloudflare: CloudflareConfig): void {
   try {
     const file = selectionPath()
     mkdirSync(dirname(file), { recursive: true })
     const temporary = `${file}.${String(process.pid)}.tmp`
-    writeFileSync(temporary, `${JSON.stringify({ hosts: keys, port }, null, 2)}\n`, 'utf8')
+    writeFileSync(temporary, `${JSON.stringify({ hosts: keys, port, cloudflare }, null, 2)}\n`, 'utf8')
     renameSync(temporary, file)
     console.info(`[dsh-share-webui] state saved: ${keys.join(', ')} on port ${String(port)}`)
   } catch (error) {
@@ -381,6 +394,27 @@ async function mount(ctx: Context, config: Config | undefined): Promise<void> {
   const access = config?.access === 'open' ? 'open' : 'pair'
   const trustLoopback = config?.trustLoopback !== false
   const devices = new DeviceStore(devicesPath())
+  // Cloudflare Access: mutable config plus the last verification outcome, which
+  // the settings page reads back.
+  const cloudflareState: {
+    config: CloudflareConfig
+    last: { email: string; reason: string; at: number }
+  } = {
+    config: persisted?.cloudflare ?? { enabled: false, teamDomain: '', audience: '', host: '' },
+    last: { email: '', reason: '', at: 0 },
+  }
+  const cloudflarePolicy = {
+    enabled: (): boolean => cloudflareState.config.enabled,
+    config: (): CloudflareConfig => cloudflareState.config,
+    verify: async (token: string) => verifyAccessRequest(token, cloudflareState.config),
+    remember: (email: string, address: string): { id: string; secret: string } | null => devices.remember(email, address),
+    report: (result: { identity: { email: string } | null; reason: string }, address: string): void => {
+      cloudflareState.last = { email: result.identity?.email ?? '', reason: result.reason, at: Date.now() }
+      if (result.identity === null) console.warn(`[dsh-share-webui] cloudflare rejected ${address}: ${result.reason}`)
+      else console.info(`[dsh-share-webui] cloudflare verified ${result.identity.email} (${address})`)
+    },
+  }
+  console.info(`[dsh-share-webui] cloudflare access: ${cloudflareState.config.enabled ? `on (${cloudflareState.config.teamDomain})` : 'off'}`)
   console.info(`[dsh-share-webui] selection: ${initial.join(', ')}${literals.length > 0 ? ` (+ ${literals.join(', ')})` : ''}`)
   console.info(`[dsh-share-webui] access: ${access}${trustLoopback ? ', loopback trusted' : ''}, ${String(devices.count)} paired device(s)`)
 
@@ -448,10 +482,12 @@ async function mount(ctx: Context, config: Config | undefined): Promise<void> {
             hostname(),
             hostname().replace(/\.local$/u, ''),
             ...hosts,
+            ...(cloudflareState.config.enabled && cloudflareState.config.host !== '' ? [cloudflareState.config.host] : []),
           ].map((entry) => entry.toLowerCase()))],
           access,
           trustLoopback,
           devices,
+          cloudflare: cloudflarePolicy,
           mintUrl: () => service.mintLoopback(origin),
         })
         try {
@@ -492,14 +528,14 @@ async function mount(ctx: Context, config: Config | undefined): Promise<void> {
       if (service !== undefined) {
         service.setSelectionHook(async (next) => {
           await schedule(next)
-          saveState(desired, activePort)
+          saveState(desired, activePort, cloudflareState.config)
         })
         service.setPortHook({
           check: async (candidate: number) => portStatus(candidate, activePort),
           apply: async (candidate: number) => {
             const previous = activePort
             activePort = candidate
-            saveState(desired, activePort)
+            saveState(desired, activePort, cloudflareState.config)
             // Force a rebind even when the selection did not change.
             applied = null
             await schedule(desired)
@@ -507,10 +543,33 @@ async function mount(ctx: Context, config: Config | undefined): Promise<void> {
             if (current !== null && current.url === null) {
               // The new port could not be bound: put the old one back.
               activePort = previous
-              saveState(desired, activePort)
+              saveState(desired, activePort, cloudflareState.config)
               applied = null
               await schedule(desired)
               throw new Error(`port ${String(candidate)} could not be bound`)
+            }
+          },
+        })
+        service.setCloudflareHook({
+          read: () => ({
+            enabled: cloudflareState.config.enabled ? 'on' : 'off',
+            teamDomain: cloudflareState.config.teamDomain,
+            audience: cloudflareState.config.audience,
+            host: cloudflareState.config.host,
+            lastEmail: cloudflareState.last.email,
+            lastReason: cloudflareState.last.reason,
+            lastAt: cloudflareState.last.at === 0 ? '' : new Date(cloudflareState.last.at).toISOString(),
+          }),
+          apply: async (next) => {
+            const hostChanged = cloudflareState.config.host !== next.host
+              || cloudflareState.config.enabled !== next.enabled
+            cloudflareState.config = next
+            forgetJwks()
+            saveState(desired, activePort, cloudflareState.config)
+            // The public hostname feeds the Host allow-list, so rebind on change.
+            if (hostChanged) {
+              applied = null
+              await schedule(desired)
             }
           },
         })
@@ -522,6 +581,7 @@ async function mount(ctx: Context, config: Config | undefined): Promise<void> {
         if (service !== undefined) {
           service.setSelectionHook(null)
           service.setPortHook(null)
+          service.setCloudflareHook(null)
           service.attachFace(null)
         }
         await chain.catch(() => {})

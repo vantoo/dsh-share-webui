@@ -29,6 +29,8 @@ export interface WebUrlSectionInjected {
   setPort: (port: string) => Promise<ShareWebuiResult>
   /** Drop the pending pairing code (host machine only). */
   clearPairing: () => Promise<ShareWebuiResult>
+  /** Update Cloudflare Access settings (host machine only). */
+  saveCloudflare: (teamDomain: string, audience: string, host: string, enabled: boolean) => Promise<ShareWebuiResult>
 }
 
 /** Full component props assembled by the settings-section renderer. */
@@ -174,7 +176,7 @@ function AddressGroup(props: {
 }
 
 /** Render the section content. */
-export function WebUrlSection({ readUrl, updateHosts, issuePairing, revokeDevice, probePort, setPort, clearPairing, t }: WebUrlSectionProps): React.ReactElement {
+export function WebUrlSection({ readUrl, updateHosts, issuePairing, revokeDevice, probePort, setPort, clearPairing, saveCloudflare, t }: WebUrlSectionProps): React.ReactElement {
   const sectionId = useId()
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [reload, setReload] = useState(0)
@@ -189,6 +191,13 @@ export function WebUrlSection({ readUrl, updateHosts, issuePairing, revokeDevice
   const [portNote, setPortNote] = useState('')
   const [portBad, setPortBad] = useState(false)
   const [portBusy, setPortBusy] = useState(false)
+  const [cfTeam, setCfTeam] = useState('')
+  const [cfAud, setCfAud] = useState('')
+  const [cfHost, setCfHost] = useState('')
+  const [cfOn, setCfOn] = useState(false)
+  const [cfNote, setCfNote] = useState('')
+  const [cfBad, setCfBad] = useState(false)
+  const [cfBusy, setCfBusy] = useState(false)
   const hostRef = useRef<HTMLDivElement>(null)
 
   // Close the host menu on any pointer press outside it.
@@ -215,6 +224,10 @@ export function WebUrlSection({ readUrl, updateHosts, issuePairing, revokeDevice
             Array.isArray(result.hosts) && result.hosts.includes(previous) ? previous : result.hosts?.[0] ?? '')
           setSelection(Array.isArray(result.selection) && result.selection.length > 0 ? result.selection : ['loopback'])
           setPortText(typeof result.port === 'string' ? result.port : '')
+          setCfTeam(result.cloudflare?.teamDomain ?? '')
+          setCfAud(result.cloudflare?.audience ?? '')
+          setCfHost(result.cloudflare?.host ?? '')
+          setCfOn(result.cloudflare?.enabled === 'on')
         },
         (error: unknown) => {
           if (!current) return
@@ -383,6 +396,40 @@ export function WebUrlSection({ readUrl, updateHosts, issuePairing, revokeDevice
       )}
     </>
   )
+
+  const applyCloudflare = (): void => {
+    setCfBusy(true)
+    setCfNote('')
+    setCfBad(false)
+    void (async () => {
+      try {
+        const result = await saveCloudflare(cfTeam, cfAud, cfHost, cfOn)
+        setState({ status: 'ready', result })
+        setCfTeam(result.cloudflare?.teamDomain ?? cfTeam)
+        setCfAud(result.cloudflare?.audience ?? cfAud)
+        setCfHost(result.cloudflare?.host ?? cfHost)
+        setCfNote(t('cfSaved'))
+      } catch (error: unknown) {
+        setCfBad(true)
+        setCfNote(t('cfFailed').replace('{{message}}', error instanceof Error ? error.message : String(error)))
+      } finally {
+        setCfBusy(false)
+      }
+    })()
+  }
+
+  const cfField = {
+    boxSizing: 'border-box' as const,
+    height: '36px',
+    padding: '0 12px',
+    border: '.5px solid var(--dsw-alias-border-l2)',
+    borderRadius: 'var(--dsw-radius-md, 8px)',
+    background: 'var(--dsw-alias-bg-layer-1)',
+    color: 'var(--dsw-alias-label-primary)',
+    font: 'inherit',
+    fontSize: '13px',
+    minWidth: '0',
+  }
 
   // The host decides whether this page runs on the machine itself: the desktop
   // shell uses a custom scheme, so `location` cannot answer that question.
@@ -567,6 +614,62 @@ export function WebUrlSection({ readUrl, updateHosts, issuePairing, revokeDevice
           )}
           {showPairing && pairError !== '' && (
             <p className={css.danger}>{t('accessFailed').replace('{{message}}', pairError)}</p>
+          )}
+          {state.result.local === 'host' && (
+            <div className={css.group}>
+              <div className={css.title}>{t('cfTitle')}</div>
+              <div className={css.desc}>{t('cfHint')}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '460px' }}>
+                <label style={{ display: 'block' }}>
+                  <div className={css.desc} style={{ marginBottom: '4px' }}>{t('cfTeam')}</div>
+                  <input
+                    value={cfTeam}
+                    placeholder="myteam.cloudflareaccess.com"
+                    onChange={(event) => { setCfTeam(event.target.value.trim()) }}
+                    style={{ ...cfField, width: '100%' }}
+                  />
+                </label>
+                <label style={{ display: 'block' }}>
+                  <div className={css.desc} style={{ marginBottom: '4px' }}>{t('cfAudience')}</div>
+                  <input
+                    value={cfAud}
+                    placeholder="Application Audience Tag"
+                    onChange={(event) => { setCfAud(event.target.value.trim()) }}
+                    style={{ ...cfField, width: '100%' }}
+                  />
+                </label>
+                <label style={{ display: 'block' }}>
+                  <div className={css.desc} style={{ marginBottom: '4px' }}>{t('cfHost')}</div>
+                  <input
+                    value={cfHost}
+                    placeholder="dsh.example.com"
+                    onChange={(event) => { setCfHost(event.target.value.trim()) }}
+                    style={{ ...cfField, width: '100%' }}
+                  />
+                </label>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '10px' }}>
+                <label className={css.check}>
+                  <input type="checkbox" checked={cfOn} onChange={(event) => { setCfOn(event.target.checked) }} />
+                  {t('cfEnable')}
+                </label>
+                <button type="button" className={css.action} disabled={cfBusy} onClick={applyCloudflare}>
+                  {t('portApply')}
+                </button>
+              </div>
+              {cfNote !== '' && <p className={cfBad ? css.danger : css.desc}>{cfNote}</p>}
+              <div className={css.desc}>
+                {state.result.cloudflare === undefined
+                  ? t('cfNone')
+                  : state.result.cloudflare.lastEmail !== ''
+                    ? t('cfLastOk')
+                        .replace('{{email}}', state.result.cloudflare.lastEmail)
+                        .replace('{{time}}', new Date(state.result.cloudflare.lastAt).toLocaleTimeString())
+                    : state.result.cloudflare.lastReason !== ''
+                      ? t('cfLastFail').replace('{{reason}}', state.result.cloudflare.lastReason)
+                      : t('cfNone')}
+              </div>
+            </div>
           )}
           {showPairing && state.status === 'ready' && (
             <div className={css.group}>
