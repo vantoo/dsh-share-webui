@@ -119,25 +119,17 @@ export async function apply(ctx: ClientContext): Promise<void> {
     // another machine can never see; replace it with an in-page browser.
     try {
       ctx.inject(['uiWorkspace'], (flowScope) => {
-        void (async () => {
-          // Only a browser on another machine needs the in-page browser: the host
-          // keeps the shipped flow, which shows its own system dialog.
-          const initial = await readUrl()
-          if (initial.local !== 'remote') return
-          const browse = () => ({
-            listDirectory: (path?: string, signal?: AbortSignal) => flowScope.uiWorkspace.listDirectory(path, signal),
-            createDirectory: (path: string, name: string) => flowScope.uiWorkspace.createDirectory(path, name),
-            t: (key: string) => t(key),
-          })
-          const flowSlots = slots as unknown as DirectoryFlowSlots
-          flowSlots.inject('conversation.hero.workspace.directoryFlow', () =>
-            flowSlots.inject('sidebar.workspaces.directoryFlow', function* registerFlows(): Generator<() => void> {
-              yield flowSlots.register({ name: 'conversation.hero.workspace.directoryFlow', inject: browse }, DirectoryDialog)
-              yield flowSlots.register({ name: 'sidebar.workspaces.directoryFlow', inject: browse }, DirectoryDialog)
-            }))
-        })().catch(() => {
-          // Remote detection failed: fall back to the shipped flow.
+        const browse = () => ({
+          listDirectory: (path?: string, signal?: AbortSignal) => flowScope.uiWorkspace.listDirectory(path, signal),
+          createDirectory: (path: string, name: string) => flowScope.uiWorkspace.createDirectory(path, name),
+          t: (key: string) => t(key),
         })
+        const flowSlots = slots as unknown as DirectoryFlowSlots
+        flowSlots.inject('conversation.hero.workspace.directoryFlow', () =>
+          flowSlots.inject('sidebar.workspaces.directoryFlow', function* registerFlows(): Generator<() => void> {
+            yield flowSlots.register({ name: 'conversation.hero.workspace.directoryFlow', inject: browse }, DirectoryDialog)
+            yield flowSlots.register({ name: 'sidebar.workspaces.directoryFlow', inject: browse }, DirectoryDialog)
+          }))
       })
     } catch {
       // No workspace UI in this client build: keep the shipped directory flow.
