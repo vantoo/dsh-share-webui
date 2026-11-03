@@ -18,7 +18,6 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type { ShareWebuiPairing, ShareWebuiPortCheck, ShareWebuiResult } from '../wire.ts'
 import { DirectoryDialog } from './DirectoryDialog.tsx'
-import { openDirectoryPicker } from './directoryPicker.ts'
 import { WebUrlSection, type WebUrlSectionInjected } from './WebUrlSection.tsx'
 import { en, zh, type ShareWebuiKey } from './locales.ts'
 import { SHARE_WEBUI_REMOTE } from './remote.ts'
@@ -121,26 +120,13 @@ export async function apply(ctx: ClientContext): Promise<void> {
     try {
       ctx.inject(['uiWorkspace'], (flowScope) => {
         void (async () => {
-          // Only a browser on another machine needs the in-page picker: the host
+          // Only a browser on another machine needs the in-page browser: the host
           // keeps the shipped flow, which shows its own system dialog.
           const initial = await readUrl()
           if (initial.local !== 'remote') return
-          const workspace = flowScope.uiWorkspace
-          const picker = (): Promise<string | null> => openDirectoryPicker(workspace, (key) => t(key))
-          let replaced = false
-          try {
-            workspace.pickDirectory = picker
-            replaced = workspace.pickDirectory === picker
-          } catch (error: unknown) {
-            console.warn('[dsh-share-webui] cannot replace pickDirectory:', error)
-          }
-          if (replaced) {
-            console.info('[dsh-share-webui] the directory picker now runs in this page')
-            return
-          }
           const browse = () => ({
-            listDirectory: (path?: string, signal?: AbortSignal) => workspace.listDirectory(path, signal),
-            createDirectory: (path: string, name: string) => workspace.createDirectory(path, name),
+            listDirectory: (path?: string, signal?: AbortSignal) => flowScope.uiWorkspace.listDirectory(path, signal),
+            createDirectory: (path: string, name: string) => flowScope.uiWorkspace.createDirectory(path, name),
             t: (key: string) => t(key),
           })
           const flowSlots = slots as unknown as DirectoryFlowSlots
@@ -149,9 +135,8 @@ export async function apply(ctx: ClientContext): Promise<void> {
               yield flowSlots.register({ name: 'conversation.hero.workspace.directoryFlow', inject: browse }, DirectoryDialog)
               yield flowSlots.register({ name: 'sidebar.workspaces.directoryFlow', inject: browse }, DirectoryDialog)
             }))
-          console.info('[dsh-share-webui] fell back to the slot registration')
-        })().catch((error: unknown) => {
-          console.warn('[dsh-share-webui] remote picker setup failed:', error)
+        })().catch(() => {
+          // Remote detection failed: fall back to the shipped flow.
         })
       })
     } catch {
