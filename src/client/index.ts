@@ -17,6 +17,7 @@ import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type { ShareWebuiPairing, ShareWebuiPortCheck, ShareWebuiResult } from '../wire.ts'
+import { DirectoryDialog } from './DirectoryDialog.tsx'
 import { WebUrlSection, type WebUrlSectionInjected } from './WebUrlSection.tsx'
 import { en, zh, type ShareWebuiKey } from './locales.ts'
 import { SHARE_WEBUI_REMOTE } from './remote.ts'
@@ -45,6 +46,12 @@ export const inject = ['slots', 'locale', 'remote']
  * registers into, named locally so the browser half compiles against the
  * settings slot surface without importing its owner package at runtime.
  */
+/** Structural contract of the directory-flow holes the browse dialog fills. */
+interface DirectoryFlowSlots {
+  inject: (slot: string, callback: () => unknown) => unknown
+  register: (options: { name: string; inject: () => Record<string, unknown> }, component: unknown) => () => void
+}
+
 interface SettingsSectionSlots {
   inject(slot: string, callback: () => unknown): void
   register(options: {
@@ -108,5 +115,24 @@ export async function apply(ctx: ClientContext): Promise<void> {
       locale: NS,
       inject: (): WebUrlSectionInjected => ({ readUrl, updateHosts, issuePairing, revokeDevice, probePort, setPort, clearPairing, saveCloudflare }),
     }, WebUrlSection))
+    // The shipped flow opens a picker on the host display, which a browser on
+    // another machine can never see; replace it with an in-page browser.
+    try {
+      ctx.inject(['uiWorkspace'], (flowScope) => {
+        const browse = () => ({
+          listDirectory: (path?: string, signal?: AbortSignal) => flowScope.uiWorkspace.listDirectory(path, signal),
+          createDirectory: (path: string, name: string) => flowScope.uiWorkspace.createDirectory(path, name),
+          t: (key: string) => t(key),
+        })
+        const flowSlots = slots as unknown as DirectoryFlowSlots
+        flowSlots.inject('conversation.hero.workspace.directoryFlow', () =>
+          flowSlots.inject('sidebar.workspaces.directoryFlow', function* registerFlows(): Generator<() => void> {
+            yield flowSlots.register({ name: 'conversation.hero.workspace.directoryFlow', inject: browse }, DirectoryDialog)
+            yield flowSlots.register({ name: 'sidebar.workspaces.directoryFlow', inject: browse }, DirectoryDialog)
+          }))
+      })
+    } catch {
+      // No workspace UI in this client build: keep the shipped directory flow.
+    }
   })
 }

@@ -108,6 +108,26 @@ export const zh = {
   cfFailed: '保存失败：{{message}}',
   /** Save succeeded. */
   cfSaved: '已保存',
+  /** Directory picker title. */
+  pickerTitle: '选择工作区目录',
+  /** Directory picker home label. */
+  pickerHome: '主目录',
+  /** Directory picker loading state. */
+  pickerLoading: '加载中…',
+  /** Directory picker empty state. */
+  pickerEmpty: '没有子文件夹',
+  /** Directory picker truncation notice. */
+  pickerTruncated: '文件夹过多，仅显示开头部分',
+  /** New folder action. */
+  pickerNewFolder: '新建文件夹',
+  /** New folder name placeholder. */
+  pickerFolderName: '文件夹名称',
+  /** Create action. */
+  pickerCreate: '创建',
+  /** Cancel action. */
+  pickerCancel: '取消',
+  /** Confirm the current directory. */
+  pickerPick: '选择此目录',
   /** Expiry line under the code. */
   accessExpires: '有效期至 {{time}}，单次使用。',
   /** Minting failure line. */
@@ -176,6 +196,16 @@ export const en: Record<keyof typeof zh, string> = {
   cfNone: 'No tunnel request has been verified yet.',
   cfFailed: 'Could not save: {{message}}',
   cfSaved: 'Saved',
+  pickerTitle: 'Select workspace folder',
+  pickerHome: 'Home',
+  pickerLoading: 'Loading…',
+  pickerEmpty: 'No subfolders',
+  pickerTruncated: 'Too many folders; showing the beginning',
+  pickerNewFolder: 'New folder',
+  pickerFolderName: 'Folder name',
+  pickerCreate: 'Create',
+  pickerCancel: 'Cancel',
+  pickerPick: 'Select this folder',
   accessExpires: 'Valid until {{time}}, single use.',
   accessFailed: 'Could not mint a code: {{message}}',
   accessDevices: 'Paired devices',
