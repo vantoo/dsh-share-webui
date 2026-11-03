@@ -432,7 +432,13 @@ export class FixedPortGateway {
       if (lower === 'origin') {
         try {
           const origin = new URL(String(value))
-          if (origin.port === String(this.port)) {
+          const host = origin.host.toLowerCase()
+          const bare = origin.hostname.toLowerCase()
+          // Rewrite whenever the origin names an entry we already accept: a
+          // tunnel origin carries no port, so a port comparison alone misses it.
+          if (origin.port === String(this.port)
+            || this.target.allowedHosts.includes(host)
+            || this.target.allowedHosts.includes(bare)) {
             headers.origin = `http://${this.target.authority}`
             continue
           }

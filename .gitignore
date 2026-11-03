@@ -26,3 +26,7 @@ backups/
 # 本地环境变量
 .env
 .env.*
+
+# build artifacts and captured traffic
+dist/
+*.har
