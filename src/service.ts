@@ -199,7 +199,7 @@ export class ShareWebuiService extends TypertRemoteService {
    * @param path - absolute directory, or empty for the home directory.
    * @returns the listing encoded as JSON (the wire carries strings only).
    */
-  browseDirectory(origin: string, path: string): string {
+  browseDirectory(origin: string, path: string): { json: string } {
     void origin
     const home = homedir()
     const target = path === '' ? home : path
@@ -213,13 +213,15 @@ export class ShareWebuiService extends TypertRemoteService {
       path: `/${parts.slice(0, index + 1).join('/')}`,
       hidden: part.startsWith('.'),
     }))
-    return JSON.stringify({
-      path: target,
-      home,
-      crumbs,
-      entries: all.slice(0, limit),
-      truncated: all.length > limit,
-    })
+    return {
+      json: JSON.stringify({
+        path: target,
+        home,
+        crumbs,
+        entries: all.slice(0, limit),
+        truncated: all.length > limit,
+      }),
+    }
   }
 
   /**
@@ -229,7 +231,7 @@ export class ShareWebuiService extends TypertRemoteService {
    * @param name - single path segment.
    * @returns the created absolute path.
    */
-  createFolder(origin: string, path: string, name: string): string {
+  createFolder(origin: string, path: string, name: string): { path: string } {
     void origin
     const segment = name.trim()
     if (segment === '' || segment.includes('/') || segment === '.' || segment === '..') {
@@ -237,7 +239,7 @@ export class ShareWebuiService extends TypertRemoteService {
     }
     const created = join(path === '' ? homedir() : path, segment)
     mkdirSync(created, { recursive: false })
-    return created
+    return { path: created }
   }
 
   /**
