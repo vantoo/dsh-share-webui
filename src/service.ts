@@ -6,6 +6,9 @@
  * @module dsh-share-webui/service
  */
 
+import { readdirSync, mkdirSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import type { DeviceStore } from './pairing.ts'
@@ -188,6 +191,53 @@ export class ShareWebuiService extends TypertRemoteService {
    */
   setCloudflareHook(hook: CloudflareHook | null): void {
     this.cloudflareHook = hook
+  }
+
+  /**
+   * List one host directory level for the in-page browser.
+   * @param origin - page origin.
+   * @param path - absolute directory, or empty for the home directory.
+   * @returns the listing encoded as JSON (the wire carries strings only).
+   */
+  browseDirectory(origin: string, path: string): string {
+    void origin
+    const home = homedir()
+    const target = path === '' ? home : path
+    const all = readdirSync(target, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => ({ name: entry.name, path: join(target, entry.name), hidden: entry.name.startsWith('.') }))
+      .sort((left, right) => left.name.localeCompare(right.name))
+    const limit = 500
+    const crumbs = target.split('/').filter((part) => part !== '').map((part, index, parts) => ({
+      name: part,
+      path: `/${parts.slice(0, index + 1).join('/')}`,
+      hidden: part.startsWith('.'),
+    }))
+    return JSON.stringify({
+      path: target,
+      home,
+      crumbs,
+      entries: all.slice(0, limit),
+      truncated: all.length > limit,
+    })
+  }
+
+  /**
+   * Create one child directory for the in-page browser.
+   * @param origin - page origin.
+   * @param path - absolute existing parent directory.
+   * @param name - single path segment.
+   * @returns the created absolute path.
+   */
+  createFolder(origin: string, path: string, name: string): string {
+    void origin
+    const segment = name.trim()
+    if (segment === '' || segment.includes('/') || segment === '.' || segment === '..') {
+      throw new Error('shareWebui: invalid folder name')
+    }
+    const created = join(path === '' ? homedir() : path, segment)
+    mkdirSync(created, { recursive: false })
+    return created
   }
 
   /**

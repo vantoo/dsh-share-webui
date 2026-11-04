@@ -194,6 +194,40 @@ export interface ShareWebuiPortCheck {
 /** Strict port-check codec. */
 export const PORT_CHECK_SCHEMA = z.object({ status: z.string(), message: z.string() })
 
+/** Directory listing payload; JSON-encoded because the wire carries strings only. */
+export const DIRECTORY_SCHEMA = z.object({ json: z.string() })
+
+/** `shareWebui/browseDirectory`: list one host directory level. */
+export const browseDirectoryInvocation = Object.freeze({
+  id: 'dsh-share-webui#shareWebui/browseDirectory',
+  service: 'shareWebui',
+  namespace: 'shareWebui',
+  method: 'browseDirectory',
+  invocation: Object.freeze({ kind: 'direct' }),
+  parameters: Object.freeze([
+    Object.freeze({ name: 'origin', wire: 'origin', source: 'json', codec: strict('dsh-share-webui/types#origin', ORIGIN_SCHEMA) }),
+    Object.freeze({ name: 'path', wire: 'path', source: 'json', codec: strict('dsh-share-webui/types#path', z.string()) }),
+  ]),
+  result: strict('dsh-share-webui/types#DirectoryListing', DIRECTORY_SCHEMA),
+  sourceLocation: Object.freeze({ file: 'src/wire.ts', line: 1, column: 1 }),
+} as const) satisfies InvocationDescriptor
+
+/** `shareWebui/createFolder`: create one child directory on the host. */
+export const createFolderInvocation = Object.freeze({
+  id: 'dsh-share-webui#shareWebui/createFolder',
+  service: 'shareWebui',
+  namespace: 'shareWebui',
+  method: 'createFolder',
+  invocation: Object.freeze({ kind: 'direct' }),
+  parameters: Object.freeze([
+    Object.freeze({ name: 'origin', wire: 'origin', source: 'json', codec: strict('dsh-share-webui/types#origin', ORIGIN_SCHEMA) }),
+    Object.freeze({ name: 'path', wire: 'path', source: 'json', codec: strict('dsh-share-webui/types#path', z.string()) }),
+    Object.freeze({ name: 'name', wire: 'name', source: 'json', codec: strict('dsh-share-webui/types#name', z.string()) }),
+  ]),
+  result: strict('dsh-share-webui/types#DirectoryCreated', z.object({ path: z.string() })),
+  sourceLocation: Object.freeze({ file: 'src/wire.ts', line: 1, column: 1 }),
+} as const) satisfies InvocationDescriptor
+
 /** `shareWebui/checkPort`: can this port be bound right now (host machine only). */
 export const checkPortInvocation = Object.freeze({
   id: 'dsh-share-webui#shareWebui/checkPort',
@@ -266,4 +300,6 @@ export const INVOCATIONS = Object.freeze([
   applyPortInvocation,
   cancelPairingInvocation,
   applyCloudflareInvocation,
+  browseDirectoryInvocation,
+  createFolderInvocation,
 ])
