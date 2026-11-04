@@ -7,6 +7,7 @@
  */
 
 import { readdirSync, mkdirSync } from 'node:fs'
+import { hostname } from 'node:os'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
@@ -74,9 +75,18 @@ function trustedOrigin(origin: string, allowed: readonly string[]): boolean {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return false
   if (url.username !== '' || url.password !== '') return false
   if (url.pathname !== '/' || url.search !== '' || url.hash !== '') return false
-  if (LOOPBACK.has(url.hostname) || url.hostname === '0:0:0:0:0:0:0:1') return true
-  return allowed.includes(url.hostname)
+  const name = url.hostname.toLowerCase()
+  if (LOOPBACK.has(name) || name === '0:0:0:0:0:0:0:1') return true
+  // The gateway also answers to this machine's hostname (and its `.local`
+  // form), so the service must accept the same origins.
+  if (name === HOST_NAME || name === HOST_NAME_SHORT) return true
+  return allowed.some((entry) => entry.toLowerCase() === name)
 }
+
+/** This machine's hostname, lowercased: the gateway accepts it as a Host. */
+const HOST_NAME = hostname().toLowerCase()
+/** Hostname without the mDNS suffix, also accepted by the gateway. */
+const HOST_NAME_SHORT = HOST_NAME.replace(/\.local$/u, '')
 
 /** Surface of the gateway the service reports. */
 export interface GatewayFace {
@@ -90,6 +100,8 @@ export interface SelectionState {
   readonly selection: readonly string[]
   /** Concrete hosts behind the selection. */
   readonly hosts: readonly string[]
+  /** Every authority the gateway accepts as a Host; the origin fence mirrors it. */
+  readonly trusted: readonly string[]
   /** Whether the gateway skips the Host allow-list. */
   readonly open: boolean
 }
@@ -145,6 +157,8 @@ export class ShareWebuiService extends TypertRemoteService {
 
   /** Concrete hosts behind the selection. */
   private hosts: readonly string[] = ['127.0.0.1']
+  /** Authorities the gateway accepts; kept in step by adopt(). */
+  private trusted: readonly string[] = ['127.0.0.1']
 
   /** Whether the gateway skips the Host allow-list. */
   private open = false
@@ -331,6 +345,7 @@ export class ShareWebuiService extends TypertRemoteService {
   adopt(state: SelectionState): void {
     this.selection = state.selection
     this.hosts = state.hosts
+    this.trusted = state.trusted
     this.open = state.open
   }
 
@@ -351,7 +366,7 @@ export class ShareWebuiService extends TypertRemoteService {
     console.info(`[dsh-share-webui] current() from ${origin}`)
     const local = this.localCaller(origin)
     const shell = isShellOrigin(origin)
-    if (!shell && !this.open && !trustedOrigin(origin, this.hosts)) {
+    if (!shell && !this.open && !trustedOrigin(origin, this.trusted)) {
       throw new Error(`shareWebui: origin rejected (configure hosts first): ${origin}`)
     }
     let base = origin

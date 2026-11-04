@@ -487,6 +487,18 @@ async function mount(ctx: Context, config: Config | undefined): Promise<void> {
       const rebind = async (keys: readonly string[]): Promise<void> => {
         const hosts = hostsOf(keys, literals)
         const open = keys.includes('any')
+        // One allow-list for both the gateway Host check and the service origin
+        // fence: loopback, LAN, Tailscale, mDNS, the machine hostname and the
+        // Cloudflare public host.
+        const trusted: string[] = [...new Set([
+          connectHost,
+          'localhost',
+          '::1',
+          hostname(),
+          hostname().replace(/\.local$/u, ''),
+          ...hosts,
+          ...(cloudflareState.config.enabled && cloudflareState.config.host !== '' ? [cloudflareState.config.host] : []),
+        ].map((entry) => entry.toLowerCase()))]
         const previous = gateway
         gateway = null
         // Await the close so the same port is free before rebinding.
@@ -498,7 +510,7 @@ async function mount(ctx: Context, config: Config | undefined): Promise<void> {
         if (activePort === 0) {
           gateway = null
           if (service !== undefined) {
-            service.adopt({ selection: keys, hosts, open })
+            service.adopt({ selection: keys, hosts, trusted, open })
             service.attachFace(null)
           }
           return
@@ -510,15 +522,7 @@ async function mount(ctx: Context, config: Config | undefined): Promise<void> {
           displayHost: hosts[0] ?? connectHost,
           // The Host check stays on even when the port is bound everywhere:
           // a rebinding page presents its own Host and is rejected here.
-          allowedHosts: [...new Set([
-            connectHost,
-            'localhost',
-            '::1',
-            hostname(),
-            hostname().replace(/\.local$/u, ''),
-            ...hosts,
-            ...(cloudflareState.config.enabled && cloudflareState.config.host !== '' ? [cloudflareState.config.host] : []),
-          ].map((entry) => entry.toLowerCase()))],
+          allowedHosts: trusted,
           access,
           trustLoopback,
           devices,
@@ -538,7 +542,7 @@ async function mount(ctx: Context, config: Config | undefined): Promise<void> {
         }
         console.info(`[dsh-share-webui] pairing page: http://127.0.0.1:${String(activePort)}/__pair`)
         if (service !== undefined) {
-          service.adopt({ selection: keys, hosts, open })
+          service.adopt({ selection: keys, hosts, trusted, open })
           service.attachFace(forward)
         }
       }
