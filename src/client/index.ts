@@ -34,6 +34,12 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 /** Dictionary namespace owned by this plugin. */
 export const NS = 'settings.shareWebui'
 
+// NOTE: the shipped workspace directory dialog is vendored verbatim into
+// `lib/client.js` (`BROWSE_DICTIONARIES`, `DirectoryBrowser`). It is MIT code
+// copied out of @deepseek-ai/dsh-client-ui-directory-picker-browse and lives in
+// the runtime bundle only, because it is machine-generated and cannot be
+// mirrored by hand. Its licence stays with the original package.
+
 /** Plugin name: matches the package name, the graph row id, and the bundle id. */
 export const name = 'dsh-share-webui'
 
