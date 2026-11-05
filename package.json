@@ -1,7 +1,7 @@
 {
   "name": "dsh-share-webui",
   "description": "Share this harness instance's Web GUI over a stable address: one listener per selected host (loopback / LAN / Tailscale / fully open), live host switching and copyable links in Settings → Web sharing · 把当前实例的 Web 界面共享出去：按选中主机分别监听，设置页「Web 共享」可即时切换与复制",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
